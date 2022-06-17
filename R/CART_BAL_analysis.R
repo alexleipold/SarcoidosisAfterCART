@@ -388,7 +388,7 @@ marker_genes <- c("CD68", "CD163", "CD14", "MARCO", "FABP4", # Mp
                   "FCN1", "VCAN", # Mono/Mp
                   "MKI67", "TOP2A", #Prolif
                   "FCER1A", "CD1C", "CD1E", "FLT3", # mDC
-                  "BASP1", "LGALS2", "CLEC9A", #pDC
+                  "LGALS2", "CLEC9A", "XCR1", # cDC1
                   "FCGR3B", "CXCL8", "CSF3R", #Neutrophils
                   "TPSAB1", "MS4A2", "GATA2", #Mast
                   "CD3D", "CD3E", "IL32", # pan T-cell
@@ -406,7 +406,7 @@ data$Cluster <- factor(data$Cluster, levels(data$Cluster)[c(3,4,9,10,11,12,16, #
                                                             5, # Mono/Mp
                                                             15, 21, # Prolif Mp
                                                             18, # mDC
-                                                            20, # pDC
+                                                            20, # cDC1
                                                             22, # Neutro
                                                             24, # Mast
                                                             14, # Treg
@@ -497,7 +497,7 @@ cluster.annotation <- c(
   "16" = "T CD4",
   "17" = "mDC",
   "18" = "NK",
-  "19" = "pDC",
+  "19" = "cDC1",
   "20" = "AMp Prolif",
   "21" = "Neutro",
   "22" = "T Prolif",
@@ -524,7 +524,7 @@ CT_Colors <- c(
   "Mono/Mp"     = "mediumpurple",
   "AMp Prolif"  = "mediumorchid3",
   "mDC"         = "plum1",
-  "pDC"         = "plum3",
+  "cDC1"         = "plum3",
   "Neutro"  = "yellow4",
   "Mast"        = "turquoise",
   "Treg"        = "skyblue4",
