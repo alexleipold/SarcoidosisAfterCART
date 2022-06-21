@@ -1,4 +1,5 @@
-# Script for the analysis of BAL fluid scRNA-seq data of case patient - CP
+# Script for the analysis of BAL fluid scRNA-seq data (CART_BAL)
+# Leipold et al.
 # technical duplicate
 
 # clean environment
@@ -9,52 +10,26 @@ gc()
 seed <- 1999
 
 # set path for plots
-plot_path <- "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/plots/"
+plot_path <- "/path/for/plots"
 
-datasets <- c("CP_BAL/A8_3", "CP_BAL/A9_3")
+# load datasets (both replicates)
+ds_replicate1 <- readRDS("/path/to/dataset/A8_3")
+ds_replicate2 <- readRDS("/path/to/dataset/A9_3")
 
-# Load datasets_samples and add meta.data that we need later
-
-for (dataset in datasets) {
-  from <- paste0("/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/datasets/", dataset)
-
-  features <- readr::read_tsv(
-    file = gzfile(paste0(from, "/filtered_feature_bc_matrix/features.tsv.gz")),
-    col_names = c("ENSEMBL", "SYMBOL", "TYPE")
-  )
-  barcodes <- readr::read_lines(
-    file = gzfile(paste0(from, "/filtered_feature_bc_matrix/barcodes.tsv.gz"))
-  )
-  ds <- Matrix::readMM(
-    file = paste0(from, "/SoupX_matrix.mtx")
-  )
-  
-  rownames(ds) <- features$ENSEMBL
-  colnames(ds) <- barcodes
-  
-  # Create Seurat object from matrix
-  ds <- Seurat::CreateSeuratObject(
-    counts = ds
-  )
-  # and store gene/ensID conversion table
-  ds@misc$features <- features
-  ds@meta.data$Origin <- dataset
-  
-  # assign name related to dataset
-  assign(paste0("ds_", dataset), ds)
-  
-}
+# add meta.data Origin
+ds_replicate1@meta.data$Origin <- "A8_3"
+ds_replicate2@meta.data$Origin <- "A9_3"
 
 # merge datasets
-ds <- merge(x = `ds_CP_BAL/A8_3`, y = `ds_CP_BAL/A9_3`)
+ds <- merge(x = ds_replicate1, y = ds_replicate2)
 
 # add meta.data technical replicate data
-index <- c("CP_BAL_replicate1", "CP_BAL_replicate2")
-names(index) <- c("CP_BAL/A8_3", "CP_BAL/A9_3")
+index <- c("CART_BAL_replicate1", "CART_BAL_replicate2")
+names(index) <- c("A8_3", "A9_3")
 ds@meta.data$technical_replicate <- index[ds@meta.data$Origin]
 
 # add Ensembl/symbol reference to ds@misc
-ds@misc$features <- `ds_CP_BAL/A8_3`@misc$features
+ds@misc$features <- ds_replicate1@misc$features
 
 # create gene symbol-EnsemblID lookup table
 to_ids <- ds@misc$features$ENSEMBL
@@ -114,7 +89,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/QC_Counts.png"),
+  filename = paste0(plot_path, quality_metric, ".png"),
   width = 4,
   height = 4.4
 )
@@ -153,7 +128,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/QC_Features.png"),
+  filename = paste0(plot_path, quality_metric, "png"),
   width = 4,
   height = 4.4
 )
@@ -191,7 +166,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/QC_pctmito.png"),
+  filename = paste0(plot_path, quality_metric, ".png"),
   width = 4,
   height = 4.4
 )
@@ -212,6 +187,7 @@ ds <- subset(ds, cells = cells)
 
 # identify epithelial cells based on EPCAM expression
 cells <- colnames(ds[, ds@assays$RNA@data[to_ids["EPCAM"],] == 0])
+
 # apply filtering of epithelial cells
 ds <- subset(ds, cells = cells)
 
@@ -309,7 +285,7 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/Replicate_CP_BAL.png"),
+  filename = paste0(plot_path, category, ".png"),
   width = 7.5,
   height = 5
 )
@@ -369,18 +345,18 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/Cluster_CP_BAL.png"),
+  filename = paste0(plot_path, category, "png"),
   width = 6.5,
   height = 5
 )
 
-# Differential expression analysis Clusters
+# Differential expression analysis between Clusters
 markers <- Seurat::FindAllMarkers(ds, only.pos = TRUE)
 markers$gene <- to_genes[markers$gene]
 markers <- markers[,c(6, 7, 2, 3, 4, 1, 5)]
 markers$ENSEMBL_ID <- to_ids[markers$gene]
 # Save as csv
-write.csv(markers, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/tables/CP_BAL_Cluster_DE.csv", row.names = FALSE)
+write.csv(markers, file = "/path/to/save/DE/analysis/output/CART_BAL_Cluster_DE.csv", row.names = FALSE)
 
 # Dotplot of marker genes
 # marker genes
@@ -471,7 +447,7 @@ plot <- ggplot2::ggplot(
   ) +
   ggplot2::scale_size_area(max_size = 6)
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/DP.png"),
+  filename = paste0(plot_path, "Marker_gene_Dotplot",".png"),
   width = 9,
   height = 6
 )
@@ -515,7 +491,7 @@ markers$gene <- to_genes[markers$gene]
 markers <- markers[,c(6, 7, 2, 3, 4, 1, 5)]
 markers$ENSEMBL_ID <- to_ids[markers$gene]
 # Save as csv
-write.csv(markers, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/tables/CP_BAL_Celltypes_DE.csv", row.names = FALSE)
+write.csv(markers, file = "/path/to/save/DE/analysis/output/CART_BAL_Celltypes_DE.csv", row.names = FALSE)
 ds <- Seurat::SetIdent(ds, value = ds@meta.data$seurat_clusters)
 
 # Plot Celltype
@@ -590,12 +566,12 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/CT_CP_BAL.png"),
+  filename = paste0(plot_path, category, ".png"),
   width = 6.5,
   height = 5
 )
 
-# Plot quality according to Celltype
+# Plot quality according to Celltype with violin plots
 # UMI Counts per cell
 quality_metric <- "nCount_RNA"
 data <- tidyr::as_tibble(t(as.matrix(
@@ -632,7 +608,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/Counts_CT.png"),
+  filename = paste0(plot_path, category, "_Celltype.png"),
   width = 6,
   height = 5.3
 )
@@ -673,7 +649,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/Genes_CT.png"),
+  filename = paste0(plot_path, category, "_Celltype.png"),
   width = 6,
   height = 5.3
 )
@@ -713,7 +689,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "DataQuality/Mito_CT.png"),
+  filename = paste0(plot_path, category, "_Celltype.png"),
   width = 6,
   height = 5.3
 )
@@ -749,14 +725,20 @@ plot <- plot +
 
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "DataQuality/CD4CD8ratio.png"),
+  filename = paste0(plot_path, "CD4CD8ratio.png"),
   width = 7,
   height = 7
 )
 
-saveRDS(ds, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/CP_BAL_Annotated.Rds", compress = FALSE)
+# Save Seurat object as Rds file
+saveRDS(ds, file = "/path/CART_BAL_Annotated.Rds", compress = FALSE)
 
 ###############################################################################
+# Isolation and re-analysis of T-cells (T CD4, T CD8, Treg)
+
+# New plot path
+plot_path <- "/path/for/plots/Tcells"
+
 # Extract T cells
 ds <- subset(ds, subset = Celltype == "T CD4" | Celltype == "T CD8" |
                     Celltype == "Treg")
@@ -851,7 +833,7 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "CP_BAL_T_cells/Cluster_CP_BAL_T.png"),
+  filename = paste0(plot_path, category, ".png"),
   width = 7,
   height = 5
 )
@@ -888,7 +870,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   ) 
 ggplot2::ggsave(
-  filename = paste0(plot_path, "CP_BAL_T_cells/QC_counts.png"),
+  filename = paste0(plot_path, quality_metric, ".png"),
   width = 6,
   height = 5.3
 )
@@ -924,7 +906,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "CP_BAL_T_cells/QC_genes.png"),
+  filename = paste0(plot_path, quality_metric, ".png"),
   width = 6,
   height = 5.3
 )
@@ -959,7 +941,7 @@ plot <- ggplot2::ggplot(
     strip.background = ggplot2::element_blank()
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "CP_BAL_T_cells/QC_mito.png"),
+  filename = paste0(plot_path, quality_metric, ".png"),
   width = 6,
   height = 5.3
 )
@@ -971,7 +953,7 @@ markers$gene <- to_genes[markers$gene]
 markers <- markers[,c(6, 7, 2, 3, 4, 1, 5)]
 markers$ENSEMBL_ID <- to_ids[markers$gene]
 # Save as csv
-write.csv(markers, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/tables/CP_BAL_T_Cluster_DE.csv", row.names = FALSE)
+write.csv(markers, file = "/path/to/save/DE/analysis/output/CART_BAL_Tcells_Clusters_DE.csv", row.names = FALSE)
 
 
 # Plot marker/important genes
@@ -1059,7 +1041,7 @@ for (i in genes) {
 }
 
 
-# UMAPxgene plots Figure2
+# UMAPxgene plots 
 voidplt <- ggplot2::ggplot() + ggplot2::theme_void()
 
 pltlistFig2 <- list(plot_IFNG, plot_TNF, plot_CSF2, plot_RORC, plot_TBX21, plot_CCR6, plot_CXCR3,
@@ -1070,12 +1052,12 @@ plot <- ggpubr::ggarrange(plotlist = pltlistFig2,
                           heights = c(1, -0.6, 1))
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "CP_BAL_T_cells/CP_BAL_T_GenesA.png"),
+  filename = paste0(plot_path, "GenesA.png"),
   width = 16,
   height = 8.5
 )
 
-# UMAPxgene plots Figure S3
+# UMAPxgene plots
 pltlistFigS3 <- list(plot_CD4, plot_CD40LG, plot_CD8A, plot_CD8B, plot_STAT3, plot_RUNX1, plot_RUNX3, plot_IL17B, plot_IL25, plot_IL17F,
                      voidplt, voidplt, voidplt, voidplt, voidplt, voidplt, voidplt, voidplt, voidplt, voidplt,
                     plot_IL26, plot_IL2, plot_CCR7, plot_TCF7, plot_S1PR1, plot_NKG7, plot_GZMK, plot_PRF1, plot_FOXP3, plot_IL2RA)
@@ -1085,7 +1067,7 @@ plot <- ggpubr::ggarrange(plotlist = pltlistFigS3,
 
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "CP_BAL_T_cells/CP_BAL_T_GenesB.png"),
+  filename = paste0(plot_path, "GenesB.png"),
   width = 23,
   height = 8.5
 )
@@ -1136,27 +1118,12 @@ map <- pheatmap::pheatmap(mat = data,
                           )
 ggplot2::ggsave(
   plot = map,
-  filename = paste0(plot_path, "CP_BAL_T_cells/CP_BAL_T_Heatmap_v2.png"),
+  filename = paste0(plot_path, "CART_BAL_Tcells_Heatmap.png"),
   width = 8.3,
   height = 3
 )
 
-# test genuinity per cell by Coexpression analysis----------
-#data <- data.frame("Cell" = rownames(ds@meta.data),
-#                   "Cluster" = ds@meta.data$seurat_clusters,
-#                   "Subset" = ds@meta.data$T_subset,
-#                   "TBX21" = ds@assays$RNA@data[to_ids["TBX21"],],
-#                   "IFNG" = ds@assays$RNA@data[to_ids["IFNG"],],
-#                   "CXCR3" = ds@assays$RNA@data[to_ids["CXCR3"],],
-#                   "RORC" = ds@assays$RNA@data[to_ids["RORC"],],
-#                   "CCL20" = ds@assays$RNA@data[to_ids["CCL20"],],
-#                   "CCR6" = ds@assays$RNA@data[to_ids["CCR6"],])
-# get cells that are coexpressing one of the gene-pairs
-# RORC/TBX21 -> transcription factors - TF
-# CCL20/IFNG -> cytokines - Cyt
-# CCR6/CXCR3 -> Receptors - rec
-
-
+# test genuineness per cell by Coexpression analysis
 data <- data.frame("Cell" = rownames(ds@meta.data),
                    "Cluster" = ds@meta.data$seurat_clusters,
                    "Subset" = ds@meta.data$T_subset,
@@ -1169,48 +1136,20 @@ data <- data.frame("Cell" = rownames(ds@meta.data),
                    "CCR6" = ds@assays$RNA@data[to_ids["CCR6"],],
                    "IL23R" = ds@assays$RNA@data[to_ids["IL23R"],],
                    "KLRB1" = ds@assays$RNA@data[to_ids["KLRB1"],])
+
+# create Coexpression data column
 data$Coexpr <- "No Co-expression"
+
+# change Coexpr data to "Co-expression", if Th1 and Th17 associated genes are Co-expressed in a single cell
 data$Coexpr[data$TBX21 + data$IFNG + data$CXCR3 + data$TNF > 0 & data$RORC + data$CCL20 + data$CCR6 + data$IL23R > 0] <- "Co-expression"
 
-ds@meta.data[data$Cell,]$Coexprez <- data$Coexpr
+# Add Coexpression to Seurat object
+ds@meta.data[data$Cell,]$Coexpr <- data$Coexpr
 
-# save csv
-write.csv(markers, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/tables/CP_BAL_T_Coexpr.csv", row.names = FALSE)
+# make table with Coexpression per cluster
+td <- table(ds@meta.data$seurat_clusters, ds@meta.data$Coexpr)
 
-
-#double_pos_TF_cells <- as.character(data$Cell[data$RORC > 0 & data$TBX21 > 0])
-#double_pos_Cytokine_cells <- as.character(data$Cell[data$CCL20 > 0 & data$IFNG > 0])
-#double_pos_Receptor_cells <- as.character(data$Cell[data$CCR6 > 0 & data$CXCR3 > 0])
-
-# genuine by coexpression; exact
-# add meta.data colums for coexpression of gene pairs - boolean
-#ds@meta.data$genuineRec <- "False"
-#ds@meta.data$genuineRec[rownames(ds@meta.data) %in% double_pos_Receptor_cells] <- "True"
-#ds@meta.data$genuineCyt <- "False"
-#ds@meta.data$genuineCyt[rownames(ds@meta.data) %in% double_pos_Cytokine_cells] <- "True"
-#ds@meta.data$genuineTF <- "False"
-#ds@meta.data$genuineTF[rownames(ds@meta.data) %in% double_pos_TF_cells] <- "True"##
-
-#ds@meta.data$Coexpr <- "No Co-expression"
-#ds@meta.data$Coexpr[ds@meta.data$genuineTF == "True"] <- "Single TF"
-#ds@meta.data$Coexpr[ds@meta.data$genuineRec == "True"] <- "Single Rec"
-#ds@meta.data$Coexpr[ds@meta.data$genuineCyt == "True"] <- "Single Cyt"
-#ds@meta.data$Coexpr[ds@meta.data$genuineCyt == "True" &
-#                           ds@meta.data$genuineTF == "True"] <- "Double-TF+Cyt"
-#ds@meta.data$Coexpr[ds@meta.data$genuineRec == "True" &
-#                           ds@meta.data$genuineTF == "True"] <- "Double-TF+Rec"
-#ds@meta.data$Coexpr[ds@meta.data$genuineRec == "True" &
-#                           ds@meta.data$genuineCyt == "True"] <- "Double-Cyt+Rec"
-#ds@meta.data$Coexpr[ds@meta.data$genuineRec == "True" &
-#                           ds@meta.data$genuineCyt == "True" &
-#                           ds@meta.data$genuineTF == "True"] <- "Triple"
-#ds@meta.data$Coexpr <- as.factor(ds@meta.data$Coexpr)
-#ds@meta.data$Coexpr <- factor(ds@meta.data$Coexpr, levels(ds@meta.data$Coexpr)[c(4, 6, 5, 7, 1, 3, 2, 8)])
-
-#ds@meta.data$Coexprez <- "Co-expression"
-#ds@meta.data$Coexprez[ds@meta.data$Coexpr == "No Co-expression"] <- "No Co-expression"
-
-td <- table(ds@meta.data$seurat_clusters, ds@meta.data$Coexprez)
+# function to calculate percentages from Coexpression table
 td_to_pct <- function(td) {
   for (i in 1:nrow(td)) {
     pcts <- c()
@@ -1221,8 +1160,11 @@ td_to_pct <- function(td) {
   }
   return(td)
 }
+
+# calculate percentages from Coexpression taable
 tdpct <- td_to_pct(td)
 
+# plot barplot with coexpression percentages per cluster
 data <- data.frame(tdpct)
 colnames(data) <- c("Cluster", "CoexprType", "proportion")
 data$CoexprType <- factor(data$CoexprType, levels(data$CoexprType)[c(2, 1)])
@@ -1254,15 +1196,10 @@ plot <- plot <- ggplot2::ggplot(
   )
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "CP_BAL_T_cells/CP_BAL_T_Coexprez_Cluster.png"),
+  filename = paste0(plot_path, "CART_BAL_Tcells_Coexpr_Cluster.png"),
   width = 6.5,
   height = 5.5
 )
-
-# Differential expression between clusters
-markers <- Seurat::FindAllMarkers(ds, only.pos = T )
-markers$gene <- to_genes[markers$gene]
-View(markers)
 
 # T-subset annotation
 cluster.annotation <- c(
@@ -1277,7 +1214,6 @@ cluster.annotation <- c(
 ds@meta.data$T_subset <- factor(cluster.annotation[ds@meta.data$seurat_clusters], 
                                      unique(cluster.annotation)[c(1, 3, 2, 6, 4, 5)])
 
-
 # DE analysis T_subset
 ds <- Seurat::SetIdent(ds, value = ds@meta.data$T_subset)
 markers <- Seurat::FindAllMarkers(ds, only.pos = TRUE)
@@ -1285,9 +1221,8 @@ markers$gene <- to_genes[markers$gene]
 markers <- markers[,c(6, 7, 2, 3, 4, 1, 5)]
 markers$ENSEMBL_ID <- to_ids[markers$gene]
 # Save as csv
-write.csv(markers, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/tables/CP_BAL_T_Tsubset_DE.csv", row.names = FALSE)
+write.csv(markers, file = "/path/to/save/DE/analysis/output/CART_BAL_Tcells_Tsubsets_DE.csv", row.names = FALSE)
 ds <- Seurat::SetIdent(ds, value = ds@meta.data$seurat_clusters)
-
 
 # Subset colors
 subset.colors <- c(
@@ -1355,7 +1290,7 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "CP_BAL_T_cells/Subset_CP_BAL_T.png"),
+  filename = paste0(plot_path, category, ".png"),
   width = 6.5,
   height = 5
 )
@@ -1366,7 +1301,7 @@ data <- tidyr::as_tibble(
   x = ds@reductions[[embedding]]@cell.embeddings
 )
 colnames(data) <- c("x", "y")
-category <- "Coexprez"
+category <- "Coexpr"
 data$col <- as.factor(ds@meta.data[[category]])
 data$col <- factor(data$col, levels(data$col)[c(2,1)])
 plot <- ggplot2::ggplot(
@@ -1421,15 +1356,14 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "CP_BAL_T_cells/genuinity_UMAP.png"),
+  filename = paste0(plot_path, "genuineness_UMAP.png"),
   width = 5.5,
   height = 5
 )
 
-# Plot genuinity per T-subset
+# Plot genuinity per T-subset as barplot
 td <- table(ds@meta.data$T_subset, ds@meta.data$Coexprez)
 tdpct <- td_to_pct(td)
-
 data <- data.frame(tdpct)
 colnames(data) <- c("Subset", "CoexprType", "proportion")
 data$CoexprType <- factor(data$CoexprType, levels(data$CoexprType)[c(2, 1)])
@@ -1457,7 +1391,7 @@ plot <- plot <- ggplot2::ggplot(
   ggplot2::scale_fill_manual(values = c("gray65", "red"))
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "CP_BAL_T_cells/CP_BAL_T_Coexprez_Subset.png"),
+  filename = paste0(plot_path, "CART_BAL_Tcells_Coexpr_Subset.png"),
   width = 6,
   height = 6
 )
@@ -1465,20 +1399,25 @@ ggplot2::ggsave(
 
 # Violin plots of IFNG/TNF/RORC/CD40LG
 # Genes per Cell
-
 assay <- "RNA"
 genes <- c("IFNG", "TNF", "KLRB1", "CD40LG")
-seed <- 1999
+
+#fetch data
 data <- tidyr::as_tibble(t(as.matrix(
   ds@assays[[assay]]@data[to_ids[genes],]
 )))
 colnames(data) <- genes
 data$col <- as.factor(ds@meta.data$T_subset)
+
+# save data for statistics later
 data1 <- data
+
+# impute noise (see Seurat)
 for (i in genes) {
   noise <- rnorm(n = nrow(data[,i])) / 100000
   data[,i] <- data[,i] + noise 
 }
+
 data <- tidyr::gather(data, "Gene", "Value", -col)
 data$Gene <- factor(data$Gene, unique(data$Gene))
 plot <- ggplot2::ggplot(
@@ -1521,15 +1460,10 @@ plot <- plot + ggpubr::stat_compare_means(
 ) + ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, .1)))
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "CP_BAL_T_cells/CP_BAL_T_GeneViolins.png"),
+  filename = paste0(plot_path, "CART_BAL_Tcells_GeneViolins.png"),
   width = 15,
   height = 7.5
 )
 
-saveRDS(ds, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/CP_BAL_T_Annotated.Rds", compress = FALSE)
-
-
-
-
-
-
+# save Seurat object as Rds
+saveRDS(ds, file = "/path/CART_BAL_Tcells_Annotated.Rds", compress = FALSE)
