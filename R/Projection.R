@@ -1,74 +1,35 @@
-# Reference mapping of Sarc T-cells onto integrated BAL T-cell embedding-------
+# Reference mapping of cutaneous Sarc T-cells onto integrated BAL T-cell embedding
 
-# get UMAP woth model
-# UMAP with MNN-corrected PCA
-ds_T <- Seurat::RunUMAP(
-  object         = ds_T,
-  dims           = 1:55,
-  seed.use       = seed,
-  reduction      = "mnn",
-  return.model = TRUE,
-  reduction.name = "mnn_umap_model")
+# identify mapping anchors using reference.reduction = "pca", as recommended
+mapping.anchors <- Seurat::FindTransferAnchors(reference = ds_integrated_BAL_T,
+                                               query = ds,
+                                               dims = 1:10,
+                                               reference.reduction = "pca",
+                                               k.filter = 100)
+# Map teh query cells onto the reference umap and perform label transfer of T-cell subsets
+ds <- Seurat::MapQuery(anchorset = mapping.anchors,
+                       reference = ds_integrated_BAL_T,
+                       query = ds,
+                       refdata = list(T_subset = "T_subset"),
+                       reference.reduction = "pca",
+                       reduction.model = "mnn_umap_model")
 
-mapping.anchors <- Seurat::FindTransferAnchors(reference = ds_T, query = ds_D_T, dims = 1:10, reference.reduction = "pca", k.filter = 100)
-predictions <- Seurat::TransferData(anchorset = mapping.anchors, refdata = ds_T@meta.data$T_subset)
-ds_D_T <- Seurat::MapQuery(anchorset = mapping.anchors, reference = ds_T, query = ds_D_T,
-                           refdata = list(T_subset = "T_subset", clusters = "seurat_clusters", old_clust = "CP_Ann"),
-                           reference.reduction = "pca", reduction.model = "mnn_umap_model")
+# label cells with prediction score below 0.4 as unassigned
+ds@meta.data$filtered.prediction <- ds@meta.data$predicted.T_subset
+ds@meta.data$filtered.prediction[ds@meta.data$predicted.T_subset.score < 0.4] <- "unassigned" 
 
-p1 <- Seurat::DimPlot(ds_T, reduction = "mnn_umap", group.by = "T_subset", pt.size = 0.25)
-p2 <- Seurat::DimPlot(ds_D_T, reduction = "ref.umap", group.by = "filtered.prediction", pt.size = 0.25)
-p1+p2
-
-p1 <- Seurat::DimPlot(ds_T, reduction = "mnn_umap", group.by = "seurat_clusters")
-p2 <- Seurat::DimPlot(ds_D_T, reduction = "ref.umap", group.by = "predicted.clusters")
-p1+p2
-
-p1 <- Seurat::DimPlot(ds_T, reduction = "mnn_umap", group.by = "CP_Ann")
-p2 <- Seurat::DimPlot(ds_D_T, reduction = "ref.umap", group.by = "predicted.old_clust")
-p1+p2
-
-p1 <- Seurat::DimPlot(ds_T, reduction = "mnn_umap", group.by = "T_subset")
-p2 <- Seurat::DimPlot(ds_D_T, reduction = "ref.umap", group.by = "RNA_snn_res.0.5")
-p1+p2
-
-Seurat::FeaturePlot(ds_D_T, reduction = "ref.umap", features = to_ids["BHLHE40"], pt.size = 1, order = T)
-Seurat::FeaturePlot(ds_D_T, reduction = "ref.umap", features = "predicted.T_subset.score", pt.size = 1, order = T)
-
+# Calculate Signature Module Scores
 gene_ids_Nathan <- to_ids[c("CCR6", "DPP4", "CTSH", "LGALS3", "BHLHE40", "PDE4D")]
 gene_ids_Gideon <- to_ids[c("RORA", "RORC", "RBPJ", "BHLHE40", "FURIN", "COTL1", "CCL20", "CCR6",
                             "IL23R", "CXCR3", "IFNG", "TNF")]
-
 CT <- list()
-CT$exTh17Score_Nathan <- gene_ids_Nathan
-CT$exTh17Score_Gideon <- gene_ids_Gideon
-
-ds_D_T <- Seurat::AddModuleScore(
-  object = ds_D_T, features = CT, name = names(CT), nbin = 24
+CT$Score_Nathan <- gene_ids_Nathan
+CT$Score_Gideon <- gene_ids_Gideon
+ds <- Seurat::AddModuleScore(
+  object = ds, features = CT, name = names(CT), nbin = 24
 )
 
-Seurat::VlnPlot(subset(ds_D_T, subset = filtered.prediction %in% c("CD4 TCM ribosomal", "CD8 CTL", "Naive-like", "Th17.1", "Treg", "unassigned")),
-                features = "exTh17Score_Nathan1", group.by = "filtered.prediction") +
-  ggplot2::geom_violin(draw_quantiles = 0.5, alpha = 0.8, scale = "width")
-
-Seurat::VlnPlot(ds_D_T,
-                features = "exTh17Score_Gideon2", group.by = "filtered.prediction") +
-  ggplot2::geom_violin(draw_quantiles = 0.5, alpha = 0.8, scale = "width")
-
-Seurat::DimPlot(ds_D_T,
-                reduction = "ref.umap", group.by = "Origin")
-
-Seurat::FeaturePlot(ds_D_T, reduction = "ref.umap", features = "exTh17Score_Gideon2", pt.size = 1, order = T, cols = c("blue", "lightyellow", "red"))
-
-Seurat::VlnPlot(ds_D_T, features = "predicted.T_subset.score", group.by = "predicted.T_subset")
-
-ds_D_T@meta.data$filtered.prediction <- ds_D_T@meta.data$predicted.T_subset
-ds_D_T@meta.data$filtered.prediction[ds_D_T@meta.data$predicted.T_subset.score < 0.4] <- "unassigned" 
-table(ds_D_T@meta.data$filtered.prediction)
-
-
-
-# Density plot for every Condition-----------------------
+# Density plot
 get_density <- function(x, y, ...) {
   dens <- MASS::kde2d(x, y, ...)
   ix <- findInterval(x, dens$x)
@@ -77,12 +38,12 @@ get_density <- function(x, y, ...) {
   return(dens$z[ii])
 }
 
-data <- data.frame("cell" = c(rownames(ds_T@meta.data), rownames(ds_D_T@meta.data)),
-                   "x" = c(ds_T@reductions$mnn_umap@cell.embeddings[,1], ds_D_T@reductions$ref.umap@cell.embeddings[,1]),
-                   "y" = c(ds_T@reductions$mnn_umap@cell.embeddings[,2], ds_D_T@reductions$ref.umap@cell.embeddings[,2]),
-                   "Condition" = c(ds_T@meta.data$Condition, rep("SkinSarc", 4733)),
-                   "Prediction" = c(ds_T@meta.data$T_subset, ds_D_T@meta.data$filtered.prediction),
-                   "Confidence" = c(rep(NA, 13357), ds_D_T@meta.data$predicted.T_subset.score)
+data <- data.frame("cell" = c(rownames(ds_integrated_BAL_T@meta.data), rownames(ds@meta.data)),
+                   "x" = c(ds_integrated_BAL_T@reductions$mnn_umap@cell.embeddings[,1], ds@reductions$ref.umap@cell.embeddings[,1]),
+                   "y" = c(ds_integrated_BAL_T@reductions$mnn_umap@cell.embeddings[,2], ds@reductions$ref.umap@cell.embeddings[,2]),
+                   "Condition" = c(ds_integrated_BAL_T@meta.data$Condition, rep("SkinSarc", 4733)),
+                   "Prediction" = c(ds_integrated_BAL_T@meta.data$T_subset, ds@meta.data$filtered.prediction),
+                   "Confidence" = c(rep(NA, 13357), ds@meta.data$predicted.T_subset.score)
 )
 
 data$density <- NA
@@ -154,7 +115,7 @@ plot <- ggplot2::ggplot(
   )
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "SarcProjection/density.png"),
+  filename = paste0(plot_path, "density.png"),
   width = 8.3,
   height = 5
 )
@@ -190,7 +151,7 @@ plot <- ggplot2::ggplot(
   ggplot2::geom_point(
     size = 2
   ) +
-  ggplot2::scale_color_manual(values = labtransfer.colors[levels(factor(ds_D_T@meta.data$filtered.prediction))]) +
+  ggplot2::scale_color_manual(values = labtransfer.colors[levels(factor(ds@meta.data$filtered.prediction))]) +
   ggplot2::coord_fixed() +
   ggplot2::theme(
     panel.background = ggplot2::element_blank(),
@@ -223,7 +184,7 @@ plot <- ggplot2::ggplot(
 plot
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "SarcProjection/labtransfer.png"),
+  filename = paste0(plot_path, "labtransfer.png"),
   width = 12,
   height = 5
 )
@@ -299,19 +260,19 @@ plot <- ggplot2::ggplot(
 plot
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "SarcProjection/labtransferConf.png"),
+  filename = paste0(plot_path, "labtransferConf.png"),
   width = 8.3,
   height = 5
 )
 
 
-# ViolinPlot Gideon Th17/1 Score ~Subsets
-data <- data.frame("Value" = ds_D_T@meta.data$exTh17Score_Nathan1)
+# ViolinPlot Gideon Th17/1 Score ~Subsets with more than 30 cells assigned to it
+data <- data.frame("Value" = ds@meta.data$exTh17Score_Nathan1)
 data$col <- data$Value
 limits <- c(-0.5, 1)
 data$col[data$col > max(limits)] <- max(limits)
 data$col[data$col < min(limits)] <- min(limits)
-data$cluster <- ds_D_T@meta.data$filtered.prediction
+data$cluster <- ds@meta.data$filtered.prediction
 data <- data[data$cluster %in% c("CD4 TCM ribosomal", "CD8 CTL", "Naive-like", "Th17.1", "Treg", "unassigned"), ]
 data$cluster <- as.factor(data$cluster)
 data$cluster <- factor(data$cluster, levels(data$cluster)[c(4, 1, 3, 5, 2, 6)])
@@ -373,19 +334,19 @@ plot <- ggplot2::ggplot(
 plot
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "SarcProjection/Score_Nathan_Violin_Subsets.png"),
+  filename = paste0(plot_path, "Score_Nathan_Violin_Subsets.png"),
   width = 3,
   height = 3
 )
 
 
-# ViolinPlot Gideon Th17/1 Score ~Subsets
-data <- data.frame("Value" = ds_D_T@meta.data$exTh17Score_Gideon2)
+# ViolinPlot Gideon Th17/1 Score ~Subsets with more than 30 cells assigned to it
+data <- data.frame("Value" = ds@meta.data$exTh17Score_Gideon2)
 data$col <- data$Value
 limits <- c(-0.4, 0.6)
 data$col[data$col > max(limits)] <- max(limits)
 data$col[data$col < min(limits)] <- min(limits)
-data$cluster <- ds_D_T@meta.data$filtered.prediction
+data$cluster <- ds@meta.data$filtered.prediction
 data <- data[data$cluster %in% c("CD4 TCM ribosomal", "CD8 CTL", "Naive-like", "Th17.1", "Treg", "unassigned"), ]
 data$cluster <- as.factor(data$cluster)
 data$cluster <- factor(data$cluster, levels(data$cluster)[c(4, 1, 3, 5, 2, 6)])
@@ -447,14 +408,10 @@ plot <- ggplot2::ggplot(
 plot
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "SarcProjection/Score_Gideon_Violin_Subsets.png"),
+  filename = paste0(plot_path, "Score_Gideon_Violin_Subsets.png"),
   width = 3,
   height = 3
 )
 
 
-
-
-
-
-#saveRDS(ds_D_T, "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/Damsky_T_cells_projected.Rds", compress = FALSE)
+#saveRDS(ds, "savepath/Damsky_T_cells_projected.Rds", compress = FALSE)
