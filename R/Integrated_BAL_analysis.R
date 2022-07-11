@@ -1,30 +1,10 @@
 # R script for scRNA-seq analysis of integrated BAL data
 
-# load data
-ds <- readRDS("/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/merged_BALs_QCd_noisy_Epi_Ery_removed_startingobj.Rds")
-
+# set seed for reproducibility
 seed <- 1999
 
 # Path for plots
-plot_path <- "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/plots/"
-
-# create gene symbol-EnsemblID lookup table
-to_ids <- ds@misc$features$ENSEMBL
-names(to_ids) <- ds@misc$features$SYMBOL
-
-to_genes <- ds@misc$features$SYMBOL
-names(to_genes) <- ds@misc$features$ENSEMBL
-
-# get batch in
-index <- c("CART_BAL", "CART_BAL",
-           "Liao2020_HC1", "Liao2020_HC2", "Liao2020_HC3",
-           "Wendisch2021_B16", "Wendisch2021_B14", "Wendisch2021_B23", "Wendisch2021_B31",
-           "Wendisch2021_B20", "Wendisch2021_B29", "Wendisch2021_B28",
-           "Liao2021_Sarc1", "Liao2021_Sarc2", "Liao2021_Sarc3", "Liao2021_Sarc4")
-names(index) <- unique(ds@meta.data$Origin)
-ds@meta.data$batch <- factor(index[ds@meta.data$Origin])
-ds@meta.data$batch <- factor(ds@meta.data$batch,
-                             levels(ds@meta.data$batch)[c(1, 5, 6, 7, 8, 2, 3, 4, 9, 11, 13, 10, 12, 14, 15)])
+plot_path <- "path/for/plots/"
 
 # Normalize mRNA counts, Identify variable fetures and scale
 ds <- Seurat::NormalizeData(
@@ -43,15 +23,14 @@ ds <- Seurat::ScaleData(
   object          = ds
   )
 
-# ------------------------------------------------------------------------------
 # Calculate low-dimensional embedding & clustering
-
 # PCA
 ds <- Seurat::RunPCA(
   object = ds,
   npcs   = 55
   )
 
+# data integration with patient/donor as confounding factor (batch)
 # MNN-corrected PCA, based on Nomralized data 
 set.seed(seed = seed)
 ds@reductions[["mnn"]] <- Seurat::CreateDimReducObject(
@@ -80,9 +59,6 @@ ds <- Seurat::RunUMAP(
   seed.use       = seed,
   reduction      = "mnn",
   reduction.name = "mnn_umap")
-
-# get batch levels in correct order
-ds@meta.data$batch <- factor(ds@meta.data$batch, levels(ds@meta.data$batch)[c(8, 12, 13, 14, 15, 9, 10, 11, 12)])
 
 # Plot UMAPS with PCA and MNN-corrected PCA with batch
 # Plot PCA_UMAP with  batch
@@ -141,7 +117,7 @@ plot <- ggplot2::ggplot(
   )
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "BAL_Integrated/PCA_Umap_batch.png"),
+  filename = paste0(plot_path, "PCA_Umap_batch.png"),
   width = 10.3,
   height = 9
 )
@@ -202,13 +178,13 @@ plot <- ggplot2::ggplot(
   )
 ggplot2::ggsave(
   plot = plot,
-  filename = paste0(plot_path, "BAL_Integrated/MNN_Umap_batch.png"),
+  filename = paste0(plot_path, "MNN_Umap_batch.png"),
   width = 12,
   height = 9
 )
 
 
-# Downstream MNN-corrected PCA will be used
+# Downstream MNN-corrected PCA will be used!
 
 # Clustering
 set.seed(seed = seed)
@@ -224,7 +200,6 @@ ds <- Seurat::FindClusters(
 )
 
 # Annotate clusters
-
 cluster.annotation <- c(
   "0"  = "Neutrophil",
   "1"  = "Mono/Macro",
@@ -245,8 +220,6 @@ cluster.annotation <- c(
   "16" = "Mono/Macro",
   "17" = "Mast"
 )
-
-
 
 ds@meta.data$Celltype <- factor(
   cluster.annotation[as.character(ds$RNA_snn_res.0.4)],
@@ -308,7 +281,7 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "BAL_Integrated/Clusters.png"),
+  filename = paste0(plot_path, "Clusters.png"),
   width = 8.7,
   height = 9
 )
@@ -381,13 +354,10 @@ plot <- ggplot2::ggplot(
     arrow = ggplot2::arrow(angle = 25, type = "closed")
   )
 ggplot2::ggsave(
-  filename = paste0(plot_path, "BAL_Integrated/Celltypes.png"),
+  filename = paste0(plot_path, "Celltypes.png"),
   width = 10,
   height = 9
 )
-
-
-saveRDS(ds, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/merged_BALs_Annotated.Rds", compress = FALSE)
 
 # Dotplot of marker genes
 # marker genes
@@ -472,10 +442,9 @@ plot <- ggplot2::ggplot(
   ) +
   ggplot2::scale_size_area(max_size = 6)
 ggplot2::ggsave(
-  filename = paste0(plot_path, "BAL_Integrated/Dotplot.png"),
+  filename = paste0(plot_path, "Dotplot.png"),
   width = 8,
   height = 6
 )
-
 
 saveRDS(ds, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/merged_BALs_Annotated.Rds", compress = FALSE)
