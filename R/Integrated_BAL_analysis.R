@@ -462,7 +462,6 @@ td_to_pct <- function(td) {
 tdpct <- td_to_pct(td)
 data <- data.frame(tdpct)
 data$Var1 <- factor(data$Var1)
-data$Var1 <- factor(data$Var1, levels(data$Var1)[c(8, 12, 13, 14, 15, 9, 10, 11, 1, 2, 3, 4, 5, 6, 7)])
 plot <- plot <- ggplot2::ggplot(
   data    = data,
   mapping = ggplot2::aes(
@@ -473,6 +472,8 @@ plot <- plot <- ggplot2::ggplot(
   )
 ) +
   ggplot2::geom_col(position = "stack") +
+  ggplot2::scale_fill_manual(values = Celltype.colors[levels(data$Var2)]) +
+  ggplot2::scale_color_manual(values = Celltype.colors[levels(data$Var2)]) +
   ggplot2::theme(
     panel.background = ggplot2::element_blank(),
     panel.border     = ggplot2::element_rect(size = 2, fill = NA),
