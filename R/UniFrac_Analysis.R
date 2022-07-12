@@ -1,4 +1,4 @@
-# Script to precompute atree and perform UniFrac distance analysis using this tree
+# Script to precompute a tree and perform multi UniFrac distance analysis using this precomputed tree
 # based on the scUniFrac package and code from LeBlanc et al. https://doi.org/10.1016/j.ccell.2022.02.016
 
 clust.tree <- function(object, method = "pca", group = "seurat_clusters",
