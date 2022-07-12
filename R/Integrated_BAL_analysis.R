@@ -447,4 +447,52 @@ ggplot2::ggsave(
   height = 6
 )
 
+# Plot Annotation proportions
+td <- table(ds_allCT_int@meta.data$batch, ds_allCT_int@meta.data$Celltype)
+td_to_pct <- function(td) {
+  for (i in 1:nrow(td)) {
+    pcts <- c()
+    for (ii in 1:ncol(td)) {
+      pcts <- c(pcts, td[i,ii]/sum(td[i,]))
+    }
+    td[i, ] <- pcts*100
+  }
+  return(td)
+}
+tdpct <- td_to_pct(td)
+data <- data.frame(tdpct)
+data$Var1 <- factor(data$Var1)
+data$Var1 <- factor(data$Var1, levels(data$Var1)[c(8, 12, 13, 14, 15, 9, 10, 11, 1, 2, 3, 4, 5, 6, 7)])
+plot <- plot <- ggplot2::ggplot(
+  data    = data,
+  mapping = ggplot2::aes(
+    x     = Var1,
+    y     = Freq,
+    col   = Var2,
+    fill  = Var2
+  )
+) +
+  ggplot2::geom_col(position = "stack") +
+  ggplot2::theme(
+    panel.background = ggplot2::element_blank(),
+    panel.border     = ggplot2::element_rect(size = 2, fill = NA),
+    axis.text        = ggplot2::element_text(size = 15),
+    axis.text.x      = ggplot2::element_text(angle = 45, hjust = 1, vjust = 1), 
+    axis.title       = ggplot2::element_blank(),
+    legend.position  = "right",
+    legend.text      = ggplot2::element_text(size = 20),
+    legend.title     = ggplot2::element_blank()
+  ) +
+  ggplot2::guides(
+    color = ggplot2::guide_legend(
+      override.aes = list(label = "")
+    )
+  )
+ggplot2::ggsave(
+  plot = plot,
+  filename = paste0(plot_path, "Proportions.png"),
+  width = 10,
+  height = 6
+)
+
 saveRDS(ds, file = "/home/alexander/Data/members/Alexander_Leipold/projects/Leo_Rasche/MM_Case_Report/Revision/13_05_22/merged_BALs_Annotated.Rds", compress = FALSE)
