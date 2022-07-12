@@ -1296,6 +1296,87 @@ ggplot2::ggsave(
   height = 5
 )
 
+
+# ViolinPlot Scores in Sarc-Th17.1 cells ~Condition-------------------------
+data <- data.frame(
+  "Value" = c(ds_T@meta.data$exTh17Score_Nathan1, ds_T@meta.data$exTh17Score_Gideon2)
+  )
+data$Score <- c(rep("1Nathan", ncol(ds_T)), rep("2Gideon", ncol(ds_T)))
+data$subset <- c(ds_T@meta.data$T_subset, ds_T@meta.data$T_subset)
+data$col <- c(ds_T@meta.data$Condition, ds_T@meta.data$Condition)
+# calculate p-values
+ps <- data.frame("Score" = c("1Nathan", "2Gideon"))
+ps$p.value <- NA
+ps$p.value[ps$Score == "1Nathan"] <- wilcox.test(
+  x = data$Value[data$Score == "1Nathan" & data$subset == "Th17.1" & data$col == "Sarc"],
+  y = data$Value[data$Score == "1Nathan"]
+)$p.value
+ps$p.value[ps$Score == "2Gideon"] <- wilcox.test(
+  x = data$Value[data$Score == "2Gideon" & data$subset == "Th17.1" & data$col == "Sarc"],
+  y = data$Value[data$Score == "2Gideon"]
+)$p.value
+
+ps$p.adjust <- p.adjust(ps$p.value)
+ps$label <- round(-log10(ps$p.adjust))
+
+
+plot <- ggplot2::ggplot(
+  data    = data[data$subset == "Th17.1" & data$col == "Sarc", ],
+  mapping = ggplot2::aes(
+    x     = Score,
+    y     = Value,
+    fill  = col
+  )
+) +
+  ggplot2::geom_point(
+    position = "jitter", size = 0.3, color = "black", 
+  ) +
+  ggplot2::geom_segment(ggplot2::aes(
+    y = mean(ds_T@meta.data$exTh17Score_Gideon2),
+    yend = mean(ds_T@meta.data$exTh17Score_Gideon2),
+    x = 1.5,
+    xend = 3),
+    size = 2,
+    color = "gray55") +
+  ggplot2::geom_segment(ggplot2::aes(
+    y = mean(ds_T@meta.data$exTh17Score_Nathan1),
+    yend = mean(ds_T@meta.data$exTh17Score_Nathan1),
+    x = 0,
+    xend = 1.5),
+    size = 2,
+    color = "gray55") +
+  ggplot2::geom_violin(
+    scale = "width", size = 1, alpha = 0.75, draw_quantiles = 0.5,
+    trim = TRUE
+  ) +
+  ggplot2::scale_fill_manual(values = c(rgb(red = 207, green = 48, blue = 0, maxColorValue = 255))) +
+  ggplot2::theme_classic(base_size = 15) +
+  ggplot2::theme(
+    legend.position  = "right",
+    axis.title       = ggplot2::element_blank(),
+    axis.text.x      = ggplot2::element_text(angle = 45, hjust = 1, vjust = 1),
+    strip.background = ggplot2::element_blank()
+  ) +
+  ggplot2::scale_y_continuous(limits = c(min(data$Value[data$col == "Sarc" & data$subset == "Th17.1"]),
+                                         max(data$Value[data$col == "Sarc" & data$subset == "Th17.1"] + 0.5))) +
+ggplot2::labs(col = NULL, x = NULL) +
+  ggnewscale::new_scale("fill") +
+  ggplot2::geom_label(
+    data = ps,
+    mapping = ggplot2::aes(
+      label = label, y = max(data$Value + 0.3), fill = label, col = NULL
+    ),
+    size = 4,
+    color = "white"
+  ) +
+  viridis::scale_fill_viridis(direction = -1, option = "A")
+ggplot2::ggsave(
+  plot = plot,
+  filename = paste0(plot_path, "cores_Violin_SarcTh171.png"),
+  width = 5,
+  height = 5
+)
+
 # Plot UMAP with genes
 pltlist <- list()
 genes <- c(
