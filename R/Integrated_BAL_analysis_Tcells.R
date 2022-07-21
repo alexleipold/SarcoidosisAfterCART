@@ -334,8 +334,8 @@ gene_idsh17 <- to_ids[c("RORC", "IL17A", "IL17F", "IL22", "CCR6", "IL23R", "CTSH
 
 
 CT <- list()
-CT$exTh17Score_Nathan <- gene_ids_Nathan
-CT$exTh17Score_Gideon <- gene_ids_Gideon
+CT$Score_Nathan <- gene_ids_Nathan
+CT$Score_Gideon <- gene_ids_Gideon
 CT$Th1Score <- gene_idsh1
 CT$Th17Score <- gene_idsh17
 
@@ -348,7 +348,7 @@ data <- data.frame("cell" = rownames(ds@meta.data),
                    "x" = ds@reductions$mnn_umap@cell.embeddings[,1],
                    "y" = ds@reductions$mnn_umap@cell.embeddings[,2],
                    "Condition" = ds@meta.data$Condition,
-                   "Score" = ds@meta.data$exTh17Score_Nathan1)
+                   "Score" = ds@meta.data$Score_Nathan1)
 data <- data[order(data$Score),]
 limits <- c(-0.5, 1)
 data$Score[data$Score > max(limits)] <- max(limits)
@@ -409,7 +409,7 @@ ggplot2::ggsave(
 )
 
 # ViolinPlot Nathan Th17/1 Score ~Clusters
-data <- data.frame("Value" = ds@meta.data$exTh17Score_Nathan1)
+data <- data.frame("Value" = ds@meta.data$Score_Nathan1)
 data$col <- data$Value
 data$col[data$col > max(limits)] <- max(limits)
 data$col[data$col < min(limits)] <- min(limits)
@@ -483,7 +483,7 @@ data <- data.frame("cell" = rownames(ds@meta.data),
                    "x" = ds@reductions$mnn_umap@cell.embeddings[,1],
                    "y" = ds@reductions$mnn_umap@cell.embeddings[,2],
                    "Condition" = ds@meta.data$Condition,
-                   "Score" = ds@meta.data$exTh17Score_Gideon2)
+                   "Score" = ds@meta.data$Score_Gideon2)
 data <- data[order(data$Score),]
 data$Score[data$Score > max(limits)] <- max(limits)
 data$Score[data$Score < min(limits)] <- min(limits)
@@ -544,7 +544,7 @@ ggplot2::ggsave(
 
 # ViolinPlot Gideon Th17/1 Score ~Clusters
 limits <- c(-0.4, 0.6)
-data <- data.frame("Value" = ds@meta.data$exTh17Score_Gideon2)
+data <- data.frame("Value" = ds@meta.data$Score_Gideon2)
 data$col <- data$Value
 data$col[data$col > max(limits)] <- max(limits)
 data$col[data$col < min(limits)] <- min(limits)
@@ -779,7 +779,7 @@ ggplot2::ggsave(
 
 
 # ViolinPlot Nathan Th17/1 Score ~Subsets
-data <- data.frame("Value" = ds@meta.data$exTh17Score_Nathan1)
+data <- data.frame("Value" = ds@meta.data$Score_Nathan1)
 data$col <- data$Value
 data$col[data$col > max(limits)] <- max(limits)
 data$col[data$col < min(limits)] <- min(limits)
@@ -849,7 +849,7 @@ ggplot2::ggsave(
 
 
 # ViolinPlot Gideon Th17/1 Score ~Subsets
-data <- data.frame("Value" = ds@meta.data$exTh17Score_Gideon2)
+data <- data.frame("Value" = ds@meta.data$Score_Gideon2)
 data$col <- data$Value
 data$col[data$col > max(limits)] <- max(limits)
 data$col[data$col < min(limits)] <- min(limits)
@@ -918,7 +918,7 @@ ggplot2::ggsave(
 )
 
 # ViolinPlot Gideon Th17/1 Score ~Condition
-data <- data.frame("Value" = ds@meta.data$exTh17Score_Gideon2)
+data <- data.frame("Value" = ds@meta.data$Score_Gideon2)
 data$col <- ds@meta.data$Condition
 plot <- ggplot2::ggplot(
   data    = data,
@@ -951,7 +951,7 @@ ggplot2::ggsave(
 )
 
 # ViolinPlot Nathan Th17/1 Score ~Subsets
-data <- data.frame("Value" = ds@meta.data$exTh17Score_Nathan1)
+data <- data.frame("Value" = ds@meta.data$Score_Nathan1)
 data$col <- ds@meta.data$Condition
 plot <- ggplot2::ggplot(
   data    = data,
@@ -1297,9 +1297,9 @@ ggplot2::ggsave(
 )
 
 
-# ViolinPlot Scores in Sarc-Th17.1 cells ~Condition-------------------------
+# ViolinPlot Scores in Sarc-Th17.1 cells-------------------------
 data <- data.frame(
-  "Value" = c(ds_T@meta.data$exTh17Score_Nathan1, ds_T@meta.data$exTh17Score_Gideon2)
+  "Value" = c(ds_T@meta.data$Score_Nathan1, ds_T@meta.data$Score_Gideon2)
   )
 data$Score <- c(rep("1Nathan", ncol(ds_T)), rep("2Gideon", ncol(ds_T)))
 data$subset <- c(ds_T@meta.data$T_subset, ds_T@meta.data$T_subset)
@@ -1332,15 +1332,15 @@ plot <- ggplot2::ggplot(
     position = "jitter", size = 0.3, color = "black", 
   ) +
   ggplot2::geom_segment(ggplot2::aes(
-    y = mean(ds_T@meta.data$exTh17Score_Gideon2),
-    yend = mean(ds_T@meta.data$exTh17Score_Gideon2),
+    y = mean(ds_T@meta.data$Score_Gideon2),
+    yend = mean(ds_T@meta.data$Score_Gideon2),
     x = 1.5,
     xend = 3),
     size = 2,
     color = "gray55") +
   ggplot2::geom_segment(ggplot2::aes(
-    y = mean(ds_T@meta.data$exTh17Score_Nathan1),
-    yend = mean(ds_T@meta.data$exTh17Score_Nathan1),
+    y = mean(ds_T@meta.data$Score_Nathan1),
+    yend = mean(ds_T@meta.data$Score_Nathan1),
     x = 0,
     xend = 1.5),
     size = 2,
