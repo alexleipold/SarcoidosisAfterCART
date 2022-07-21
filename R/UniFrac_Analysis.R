@@ -1,6 +1,8 @@
 # Script to precompute a tree and perform multi UniFrac distance analysis using this precomputed tree
 # based on the scUniFrac package and code from LeBlanc et al. https://doi.org/10.1016/j.ccell.2022.02.016
 
+plot_path <- "/path/for/plots/"
+
 clust.tree <- function(object, method = "pca", group = "seurat_clusters",
                        dim_red_use = "mnn", pcs_use = NULL, genes_use = NULL) {
   require(Seurat)
