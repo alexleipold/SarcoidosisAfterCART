@@ -6,6 +6,53 @@ seed <- 1999
 # Path for plots
 plot_path <- "path/for/plots/"
 
+
+
+# Quality Control
+
+# calculate percentage of mitochondrial counts per cell
+mt_counts <- Matrix::colSums(ds@assays$RNA@counts[
+  features$ENSEMBL[which(stringr::str_detect(features$SYMBOL, "^MT-"))]
+  , ]) 
+ds@meta.data$percent.mt <- round(
+  mt_counts / ds@meta.data$nCount_RNA * 100, 1
+)
+
+# save number of cells per sample before QC
+ds@misc$nr_cells_per_sample_before_QC <- table(ds@meta.data$Origin)
+
+# Quality filtering
+# Set thresholds # (percent.mt-min, percent.mt-max, UMI-min, UMI-max, Genes-min, Genes-max)
+thresholds <- data.frame("CART_BAL" = c(0.2, 10, 1300, 90000, 750, 7500),
+                         "HC" = c(0.2, 25, 500, 40000, 300, 5500),
+                         "COV" = c(0.2, 13, 500, 60000, 300, 7000),
+                         "Sarc" = c(0.2, 15, 700, 60000, 500, 7000)
+)
+colnames(thresholds) <- c("CART_BAL", "HC", "COV", "Sarc")
+
+# subset ds with thresholds
+cells <- c()
+for (i in colnames(thresholds)) {
+  th <- thresholds[,i]
+  dsi <- subset(ds, subset = Condition == i)
+  
+  dsi <- subset(dsi, subset = percent.mt > th[1])
+  dsi <- subset(dsi, subset = percent.mt < th[2])
+  
+  dsi <- subset(dsi, subset = nCount_RNA > th[3])
+  dsi <- subset(dsi, subset = nCount_RNA < th[4])
+  
+  dsi <- subset(dsi, subset = nFeature_RNA > th[5])
+  dsi <- subset(dsi, subset = nFeature_RNA < th[6])
+  
+  cellsi <- colnames(dsi)
+  
+  cells <- c(cells, cellsi)
+}
+
+# apply filtering
+ds <- subset(ds, cells = cells)
+
 # Normalize mRNA counts, Identify variable fetures and scale
 ds <- Seurat::NormalizeData(
   object               = ds,
